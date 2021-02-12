@@ -14215,6 +14215,28 @@ var pulls = {
 		},
 		url: "/repos/:owner/:repo/pulls/:pull_number/comments/:comment_id/replies"
 	},
+	createPRComment: {
+		method: "POST",
+		params: {
+			body: {
+				required: true,
+				type: "string"
+			},
+			owner: {
+				required: true,
+				type: "string"
+			},
+			pull_number: {
+				required: true,
+				type: "integer"
+			},
+			repo: {
+				required: true,
+				type: "string"
+			}
+		},
+		url: "/repos/:owner/:repo/pulls/:pull_number/comments"
+	},
 	createReviewRequest: {
 		method: "POST",
 		params: {
@@ -15598,15 +15620,7 @@ var repos = {
 				type: "string"
 			}
 		},
-		url: "/repos/:owner/:repo/vulnerability-alerts"
-	},
-	compareCommits: {
-		method: "GET",
-		params: {
-			base: {
-				required: true,
-				type: "string"
-			},
+		url: "/repos/:owner/:repo/vulnerability-alertcommit_sha
 			head: {
 				required: true,
 				type: "string"
