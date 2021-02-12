@@ -9,7 +9,6 @@ async function main() {
 	const token = core.getInput("github-token")
 	const lcovFile = core.getInput("lcov-file") || "./coverage/lcov.info"
 	const baseFile = core.getInput("lcov-base")
-	const pullRequestId = core.getInput("pullRequestId")
 
 	const raw = await fs.readFile(lcovFile, "utf-8").catch(err => null)
 	if (!raw) {
@@ -22,11 +21,6 @@ async function main() {
 		console.log(`No coverage report found at '${baseFile}', ignoring...`)
 	}
 
-	if (typeof pullRequestId === 'undefined' && !pullRequestId && context.eventName === "repository_dispatch") {
-		console.log(`pullRequestId not specified for repository_dispatch event, exiting...`)
-		return
-	}
-
 	const options = {
 		repository: context.payload.repository.full_name,
 		prefix: `${process.env.GITHUB_WORKSPACE}/`,
@@ -36,7 +30,7 @@ async function main() {
 		options.commit = context.payload.pull_request.head.sha
 		options.head = context.payload.pull_request.head.ref
 		options.base = context.payload.pull_request.base.ref
-	} else if (context.eventName === "push" || context.eventName === "repository_dispatch") {
+	} else if (context.eventName === "push") {
 		options.commit = context.payload.after
 		options.head = context.ref
 	}
@@ -58,14 +52,6 @@ async function main() {
 			owner: context.repo.owner,
 			commit_sha: options.commit,
 			body: diff(lcov, baselcov, options),
-		})
-	} else if (context.eventName === "repository_dispatch" && pullRequestId) {
-		await new GitHub(token).repos.createPRComment({
-			repo: context.repo.repo,
-			owner: context.repo.owner,
-			commit_sha: options.commit,
-			body: diff(lcov, baselcov, options),
-			pull_number: pullRequestId,
 		})
 	}
 }

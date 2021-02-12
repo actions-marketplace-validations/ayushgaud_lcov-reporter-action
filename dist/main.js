@@ -14215,28 +14215,6 @@ var pulls = {
 		},
 		url: "/repos/:owner/:repo/pulls/:pull_number/comments/:comment_id/replies"
 	},
-	createPRComment: {
-		method: "POST",
-		params: {
-			body: {
-				required: true,
-				type: "string"
-			},
-			owner: {
-				required: true,
-				type: "string"
-			},
-			pull_number: {
-				required: true,
-				type: "integer"
-			},
-			repo: {
-				required: true,
-				type: "string"
-			}
-		},
-		url: "/repos/:owner/:repo/pulls/:pull_number/comments"
-	},
 	createReviewRequest: {
 		method: "POST",
 		params: {
@@ -15620,7 +15598,15 @@ var repos = {
 				type: "string"
 			}
 		},
-		url: "/repos/:owner/:repo/vulnerability-alertcommit_sha
+		url: "/repos/:owner/:repo/vulnerability-alerts"
+	},
+	compareCommits: {
+		method: "GET",
+		params: {
+			base: {
+				required: true,
+				type: "string"
+			},
 			head: {
 				required: true,
 				type: "string"
@@ -22971,9 +22957,13 @@ async function main$1() {
 	const token = core$1.getInput("github-token");
 	const lcovFile = core$1.getInput("lcov-file") || "./coverage/lcov.info";
 	const baseFile = core$1.getInput("lcov-base");
+	const pullRequestId = core$1.getInput("pull-request-id");
+	const lcovDump = core$1.getInput("lcov-dump");
 
 	const raw = await fs.promises.readFile(lcovFile, "utf-8").catch(err => null);
-	if (!raw) {
+	if (typeof lcovDump !== 'undefined' && lcovDump) {
+		console.log(`Using raw lcov from payload`);
+	} else if (!raw) {
 		console.log(`No coverage report found at '${lcovFile}', exiting...`);
 		return
 	}
@@ -22981,6 +22971,11 @@ async function main$1() {
 	const baseRaw = baseFile && await fs.promises.readFile(baseFile, "utf-8").catch(err => null);
 	if (baseFile && !baseRaw) {
 		console.log(`No coverage report found at '${baseFile}', ignoring...`);
+	}
+
+	if (typeof pullRequestId === 'undefined' && !pullRequestId && github_1.eventName === "repository_dispatch") {
+		console.log(`pull-request-id not specified for repository_dispatch event, exiting...`)
+		return
 	}
 
 	const options = {
@@ -22995,9 +22990,15 @@ async function main$1() {
 	} else if (github_1.eventName === "push") {
 		options.commit = github_1.payload.after;
 		options.head = github_1.ref;
+	} else if ( github_1.eventName === "repository_dispatch") {
+		options.commit = github_1.sha;
 	}
+	var lcov = {}
+	if (lcovDump) {
+		lcov = await parse$2(lcovDump);
+	} else
+	lcov = await parse$2(raw);
 
-	const lcov = await parse$2(raw);
 	const baselcov = baseRaw && await parse$2(baseRaw);
 	const body = diff(lcov, baselcov, options);
 
@@ -23013,6 +23014,13 @@ async function main$1() {
 			repo: github_1.repo.repo,
 			owner: github_1.repo.owner,
 			commit_sha: options.commit,
+			body: diff(lcov, baselcov, options),
+		});
+	} else if (github_1.eventName === "repository_dispatch") {
+		await new github_2(token).issues.createComment({
+			repo: github_1.repo.repo,
+			owner: github_1.repo.owner,
+			issue_number: pullRequestId,
 			body: diff(lcov, baselcov, options),
 		});
 	}
