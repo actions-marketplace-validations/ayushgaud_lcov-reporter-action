@@ -27,13 +27,26 @@ The location of the lcov file to read the coverage report from. Defaults to
 The location of the lcov file resulting from running the tests in the base
 branch. When this is set a diff of the coverage percentages is shown.
 
-## Example usage
+##### `lcov-dump` (**Optional**)
+Raw dump of lcov data
 
+##### `pull-request-id` (**Optional**)
+Comment results on specific PR based (if triggered using API)
+
+## Example usage
 ```yml
-uses: romeovs/lcov-reporter-action@v0.2.16
-with:
-  github-token: ${{ secrets.GITHUB_TOKEN }}
-  lcov-file: ./coverage/lcov.info
+ - name: Report coverage
+   uses: ayushgaud/lcov-reporter-action@master
+   with:
+     github-token: ${{ secrets.GITHUB_TOKEN }}
+     lcov-dump: ${{ github.event.client_payload.lcovDump }}
+     pull-request-id: ${{ github.event.client_payload.PR }}
+```
+
+### Trigger action with coverage payload
+```bash
+export LCOV_DUMP=$(cat lcov.info | jq -aRs .)
+curl --request POST --url 'https://api.github.com/repos/$ORG/$REPO/dispatches'  -H"Accept: application/vnd.github.v3+json"  -H"authorization: token $GH_TOKEN" --data '{"event_type": $EVENT_TYPE, "client_payload": {"PR":'$TRAVIS_PULL_REQUEST', "lcovDump":'$LCOV_DUMP'}}'
 ```
 
 ## Acknowledgements
